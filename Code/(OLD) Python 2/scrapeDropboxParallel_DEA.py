@@ -9,6 +9,7 @@ Created on Thu Dec 14 14:36:45 2017
 import pandas as pd
 import os
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 from bs4 import BeautifulSoup
 from joblib import Parallel, delayed
 import multiprocessing
@@ -57,10 +58,14 @@ def zip_code_list():
         Extract the zip code column, remove any potential duplicates, and store
         return the codes as a list.
     '''
-    tempZipDF = pd.read_csv('zip_code_database.csv', usecols=[0,6], dtype=dtype_dict)
-    tempZipDF = tempZipDF.loc[tempZipDF['state'].isin(states)]
+    tempZipDF = pd.read_csv('Data/zip_code_database_US.csv', usecols=[0], dtype=dtype_dict)
+    #tempZipDF = tempZipDF.loc[tempZipDF['state'].isin(states)]
     tempZipDF.drop_duplicates(inplace=True)
     tempList = list(tempZipDF['zip'])
+    
+    # Add leading zeros to all combinations less than 10000
+    tempList = [j.zfill(5) for j in tempList]
+    
     return tempList
     
 def scrape_dea(zips):
@@ -78,8 +83,10 @@ def scrape_dea(zips):
     '''
     count = 0
 
-    # Open a PhantomJS web browser and direct it to the DEA's dropbox search page
-    browser = webdriver.PhantomJS()   
+    # Open a Headless Firefox web browser and direct it to the DEA's dropbox search page
+    options = Options()
+    options.set_headless(headless=True)
+    browser = webdriver.Firefox(firefox_options=options)
     browser.get('https://apps.deadiversion.usdoj.gov/pubdispsearch')
     browser.implicitly_wait(100)
     
@@ -192,6 +199,6 @@ dropboxDF.drop_duplicates(inplace=True)
 dropboxDF = dropboxDF.dropna(axis=0,how='any',subset=['Address 1','City,State,Zip'])
 
 # Export dataframe to CSV file in the working directory
-dropboxDF.to_csv('dropbox_addresses.csv', index=False) 
+dropboxDF.to_csv('dropbox_addresses_April.csv', index=False) 
 
 

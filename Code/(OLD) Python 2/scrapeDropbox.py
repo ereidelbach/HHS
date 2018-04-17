@@ -9,7 +9,9 @@ Created on Thu Dec 14 14:36:45 2017
 import pandas as pd
 import os
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 from bs4 import BeautifulSoup
+import itertools
 
 '''
     NOTE 1: For the Selenium driver to function properly on Ubuntu, I had to 
@@ -48,11 +50,19 @@ def zip_code_list():
         Extract the zip code column, remove any potential duplicates, and store
         return the codes as a list.
     '''
-    tempZipDF = pd.read_csv('zip_code_database.csv', usecols=[0,6], dtype=dtype_dict)
-    tempZipDF = tempZipDF.loc[tempZipDF['state'].isin(states)]
+    tempZipDF = pd.read_csv('Data/zip_code_database_US.csv', usecols=[0], dtype=dtype_dict)
+    #tempZipDF = tempZipDF.loc[tempZipDF['state'].isin(states)]
     tempZipDF.drop_duplicates(inplace=True)
-    tempList = tempZipDF['zip']   
+    tempList = list(tempZipDF['zip'])
+    
+    # Add leading zeros to all combinations less than 10000
+    tempList = [j.zfill(5) for j in tempList]
+    
     return tempList
+
+def dedup_list(temp_list):
+    temp_list.sort()
+    return list(k for k,_ in itertools.groupby(temp_list))
     
 ###############################################################################
 # Working Code
@@ -70,13 +80,11 @@ zipList = zip_code_list()
 #   using the list of 40,000+ zip codes (`zipList`)
 # -----------------------------------------------------------------------------
 
-# Alternative:  use the headless browser `PhantomJS`
-#   Use the instructions found here to install PhantomJS on Ubuntu: 
-#       https://www.vultr.com/docs/how-to-install-phantomjs-on-ubuntu-16-04
-# browser = webdriver.PhantomJS()
-
-# Open a Firefox web browser and direct it to the DEA's dropbox search page
-browser = webdriver.Firefox()
+# Open a Headless Firefox web browser and direct it to the DEA's dropbox search page
+options = Options()
+options.set_headless(headless=True)
+browser = webdriver.Firefox(firefox_options=options)
+#browser = webdriver.Firefox()
 browser.get('https://apps.deadiversion.usdoj.gov/pubdispsearch')
 browser.implicitly_wait(500)
 
@@ -86,9 +94,10 @@ columnNames = []
 # final storage container for dropbox locations
 dropboxList = []
 
+count = 0
+fileCount = 0
 # For every zip code in the US, run the dropbox location search on the site
-for code in zipList:
-
+for code in zipList[1001:]:
     try:
         # Input the zip code into the page
         zipElem = browser.find_element_by_id('searchForm:zipCodeInput')
@@ -106,7 +115,7 @@ for code in zipList:
         
         # Use beautifulSoup to extract the dropbox data from the generated page
         html = browser.page_source
-        soup = BeautifulSoup(html, 'lxml')
+        soup = BeautifulSoup(html, 'html.parser')
         dropboxTable = soup.findAll('table', role='grid')[0]
         
         # On the first iteration, grab column names from the dropbox location table
@@ -127,18 +136,31 @@ for code in zipList:
         
         # Move back to the search page and start over
         browser.back()
+        
+        count+=1
+        if count%100 == 0:
+            print(count)
+            print('length of list (BEFORE):' + str(len(dropboxList)))
+            dropboxList = dedup_list(dropboxList)
+            print('length of list (AFTER):' + str(len(dropboxList)))
+            
+        if count%100 == 0:
+            print('inside 2')
+            # Convert storage container into pandas dataframe
+            dropboxDF = pd.DataFrame(dropboxList, columns = columnNames)
+            
+            # Delete the `map` and `distance` columns as they are not relevant
+            dropboxDF.drop('Map ', axis=1, inplace=True)
+            dropboxDF.drop('Distance', axis=1, inplace=True)
+            
+            # Remove any duplicate entries caused by querying nearby zip codes
+            dropboxDF.drop_duplicates(inplace=True)
+            
+            # Export dataframe to CSV file in the working directory
+            filename = 'Data/Temp/dropbox_addresses_April2018_' + str(fileCount) + '.csv'
+            dropboxDF.to_csv(filename, index=False)
+            fileCount+=1
+            dropboxList = []
+            dropboxDF = pd.DataFrame()
     except:
         pass
-    
-# Convert storage container into pandas dataframe
-dropboxDF = pd.DataFrame(dropboxList, columns = columnNames)
-
-# Delete the `map` and `distance` columns as they are not relevant
-dropboxDF.drop('Map ', axis=1, inplace=True)
-dropboxDF.drop('Distance', axis=1, inplace=True)
-
-# Remove any duplicate entries caused by querying nearby zip codes
-dropboxDF.drop_duplicates(inplace=True)
-
-# Export dataframe to CSV file in the working directory
-dropboxDF.to_csv('dropbox_addresses.csv', index=False)
