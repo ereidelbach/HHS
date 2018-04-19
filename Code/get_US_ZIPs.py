@@ -39,7 +39,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from bs4 import BeautifulSoup
 import time
-import csv
+import pandas as pd
 
 #==============================================================================
 # Function Definitions / Reference Variable Declaration
@@ -72,8 +72,16 @@ url = 'https://tools.usps.com/go/zip-code-lookup.htm'
 #options = Options()
 #options.set_headless(headless=True)
 #browser = webdriver.Firefox(firefox_options=options)
+
 browser = webdriver.Firefox()
-browser.implicitly_wait(100)
+
+#options = webdriver.ChromeOptions()
+#options.binary_location = 'usr/bin/google-chrome-stable'
+#options.add_argument('headless')
+#browser = webdriver.Chrome(chrome_options=options)
+
+# wait up to 10 seconds for the elements to become available
+browser.implicitly_wait(10)
 
 # Load the initial look up page
 browser.get(url)
@@ -114,7 +122,11 @@ for zip in zip_code_list[500:]:
         #   a valid ZIP code" then the zip code is discarded.
         errorSoup = soup.find('div',{'class':'server-error cities-by-zipcode-tZip help-block'})
         if errorSoup is None:
-            official_zip_list.append(zip)   
+            tempList = []
+            tempList.append(zip) # Zip Code
+            tempList.append(soup.find('p',{'class':'row-detail-wrapper'}).text.split(' ')[0]) # City
+            tempList.append(soup.find('p',{'class':'row-detail-wrapper'}).text.split(' ')[1]) # State
+            official_zip_list.append(tempList)
             time.sleep(.300)
         
         # reset the page by selecting the `Look Up Another ZIP Code` button
@@ -124,7 +136,12 @@ for zip in zip_code_list[500:]:
     except:
         pass
     
-# Export List to CSV
-with open('Data/zip_code_database_US_April2018.csv','w') as f:
-    writer = csv.writer(f)
-    writer.writerow(official_zip_list)
+# Write the contents of the playerList to a .csv file
+filename = 'Data/us_zips_2018.csv'
+df = pd.DataFrame(official_zip_list, columns = ['Zip','City','State'])
+            
+# Remove any duplicate entries caused by querying nearby zip codes
+df.drop_duplicates(inplace=True)
+
+# Export dataframe to CSV file in the working directory
+df.to_csv(filename, index=False)

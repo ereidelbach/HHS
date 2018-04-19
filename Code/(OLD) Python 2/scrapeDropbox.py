@@ -63,7 +63,37 @@ def zip_code_list():
 def dedup_list(temp_list):
     temp_list.sort()
     return list(k for k,_ in itertools.groupby(temp_list))
+
+def scrape_page(browser):
+    # Input the zip code into the page
+    zipElem = browser.find_element_by_id('searchForm:zipCodeInput')
+    zipElem.clear() # clear the box in case any previous data exists
+    zipElem.send_keys(code)
     
+    # Specify the maximum radius of 50 miles
+    desired_button = browser.find_element_by_xpath(
+            '/html/body/div[1]/div[2]/div/div/div[2]/form/div[10]/table/tbody/tr/td[7]/div/div[2]/span')
+    desired_button.click()
+    
+    # Click the submit button
+    search_button = browser.find_element_by_id('searchForm:submitSearchButton')
+    search_button.click()
+    
+    # Use beautifulSoup to extract the dropbox data from the generated page
+    html = browser.page_source
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    # Test to make sure there are valid results
+    status_noresults = soup.find('tr',{'class':'ui-widget-content ui-datatable-empty-message'})
+    status_badzip = soup.find('span',{'class':'ui-messages-error-summary'})
+    if status_noresults is not None:
+        return 'NONE_FOUND'
+    elif status_badzip is not None:
+        return 'BAD_ZIP'
+    else:    
+        #dropboxTable = soup.findAll('table', role='grid')[0]
+        return(soup.findAll('table', role='grid')[0])
+
 ###############################################################################
 # Working Code
 
@@ -81,12 +111,12 @@ zipList = zip_code_list()
 # -----------------------------------------------------------------------------
 
 # Open a Headless Firefox web browser and direct it to the DEA's dropbox search page
-options = Options()
-options.set_headless(headless=True)
-browser = webdriver.Firefox(firefox_options=options)
-#browser = webdriver.Firefox()
+#options = Options()
+#options.set_headless(headless=True)
+#browser = webdriver.Firefox(firefox_options=options)
+browser = webdriver.Firefox()
 browser.get('https://apps.deadiversion.usdoj.gov/pubdispsearch')
-browser.implicitly_wait(500)
+browser.implicitly_wait(10)
 
 # storage variable for table column names
 columnNames = []
@@ -95,72 +125,51 @@ columnNames = []
 dropboxList = []
 
 count = 0
-fileCount = 0
 # For every zip code in the US, run the dropbox location search on the site
-for code in zipList[1001:]:
-    try:
-        # Input the zip code into the page
-        zipElem = browser.find_element_by_id('searchForm:zipCodeInput')
-        zipElem.clear() # clear the box in case any previous data exists
-        zipElem.send_keys(code)
-        
-        # Specify the maximum radius of 50 miles
-        desired_button = browser.find_element_by_xpath(
-                '/html/body/div[1]/div[2]/div/div/div[2]/form/div[10]/table/tbody/tr/td[7]/div/div[2]/span')
-        desired_button.click()
-        
-        # Click the submit button
-        search_button = browser.find_element_by_id('searchForm:submitSearchButton')
-        search_button.click()
-        
-        # Use beautifulSoup to extract the dropbox data from the generated page
-        html = browser.page_source
-        soup = BeautifulSoup(html, 'html.parser')
-        dropboxTable = soup.findAll('table', role='grid')[0]
-        
-        # On the first iteration, grab column names from the dropbox location table
-        if code == zipList[0]:
-            tableHeader = dropboxTable.find('tr')
-            th = tableHeader.findAll('th')
-            for col in th:
-                columnNames.append(col.text)
-        
+for code in zipList[29199:]:
+    status = ''
+    status = scrape_page(browser)
+    
+    # If we find a bad zip code or no dropbox locations are found in a zip,
+    #   skip to the next zip code
+    if status == 'NONE_FOUND' or status == 'BAD_ZIP':
+        browser.get('https://apps.deadiversion.usdoj.gov/pubdispsearch')
+        continue
+    else:
         # For every column in a row in the dropbox location table, grab the data 
         #   and place it in the list `rowList`.  After each row is read, add that 
         #   data to the master list `dropboxList`.  
-        for tr in dropboxTable.findAll('tr')[1:]:
+        for tr in status.findAll('tr')[1:]:
             rowList = []
-            for td in tr.findAll('td'):
+            for td in tr.findAll('td')[:4]:
                 rowList.append(td.text)
-            dropboxList.append(rowList)
-        
-        # Move back to the search page and start over
-        browser.back()
-        
+            mapInfo = tr.find('a', href=True)['href'].split(
+                    'daddr=')[1].split('&hl=en')[0]
+            mapURL = 'http://maps.google.com/maps?q=' + str(mapInfo)
+            rowList.append(mapURL)
+            dropboxList.append(rowList) 
         count+=1
-        if count%100 == 0:
+        if count%25 == 0:
             print(count)
             print('length of list (BEFORE):' + str(len(dropboxList)))
             dropboxList = dedup_list(dropboxList)
             print('length of list (AFTER):' + str(len(dropboxList)))
             
-        if count%100 == 0:
-            print('inside 2')
+        if count%400 == 0:
+            print('Printing file: ' + code)
             # Convert storage container into pandas dataframe
-            dropboxDF = pd.DataFrame(dropboxList, columns = columnNames)
-            
-            # Delete the `map` and `distance` columns as they are not relevant
-            dropboxDF.drop('Map ', axis=1, inplace=True)
-            dropboxDF.drop('Distance', axis=1, inplace=True)
+            dropboxDF = pd.DataFrame(dropboxList, columns = ['Business Name',
+                                                             'Address 1',
+                                                             'Address 2',
+                                                             'City, State Zip',
+                                                             'Map URL'])
             
             # Remove any duplicate entries caused by querying nearby zip codes
             dropboxDF.drop_duplicates(inplace=True)
             
             # Export dataframe to CSV file in the working directory
-            filename = 'Data/Temp/dropbox_addresses_April2018_' + str(fileCount) + '.csv'
+            filename = 'Data/Temp/dropbox_addresses_April2018_' + str(code) + '.csv'
             dropboxDF.to_csv(filename, index=False)
-            fileCount+=1
             dropboxList = []
-            dropboxDF = pd.DataFrame()
-    except:
-        pass
+            dropboxDF = pd.DataFrame()  
+        browser.back()

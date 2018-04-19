@@ -1,0 +1,11 @@
+# Ignore all .log files
+*.log
+
+# Ignore folder named `Data`
+Data/
+
+# Ignore folder named `TAGGS`
+TAGGS/
+
+# Ignore folder named `Images`
+Images/
