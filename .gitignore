@@ -2,7 +2,7 @@
 *.log
 
 # Ignore folder named `Data`
-/Data
+#/Data
 
 # Ignore folder named `TAGGS`
 /TAGGS

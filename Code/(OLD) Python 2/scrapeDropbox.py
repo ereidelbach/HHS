@@ -126,7 +126,7 @@ dropboxList = []
 
 count = 0
 # For every zip code in the US, run the dropbox location search on the site
-for code in zipList[29199:]:
+for code in zipList:
     status = ''
     status = scrape_page(browser)
     
@@ -168,7 +168,7 @@ for code in zipList[29199:]:
             dropboxDF.drop_duplicates(inplace=True)
             
             # Export dataframe to CSV file in the working directory
-            filename = 'Data/Temp/dropbox_addresses_April2018_' + str(code) + '.csv'
+            filename = 'Data/April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
             dropboxDF.to_csv(filename, index=False)
             dropboxList = []
             dropboxDF = pd.DataFrame()  

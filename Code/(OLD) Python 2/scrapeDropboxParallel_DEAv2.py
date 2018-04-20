@@ -12,7 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from bs4 import BeautifulSoup
 from joblib import Parallel, delayed
-import multiprocessing import pool
+from multiprocessing import Pool
 import itertools
 from itertools import groupby
 from operator import itemgetter
@@ -130,6 +130,7 @@ def scrape_dea(zips):
     options = Options()
     options.set_headless(headless=True)
     browser = webdriver.Firefox(firefox_options=options)
+#    browser = webdriver.Firefox()
     browser.get('https://apps.deadiversion.usdoj.gov/pubdispsearch')
     browser.implicitly_wait(100)
     
@@ -180,11 +181,13 @@ def scrape_dea(zips):
                 dropboxDF.drop_duplicates(inplace=True)
                 
                 # Export dataframe to CSV file in the working directory
-                filename = 'Data/Temp/dropbox_addresses_April2018_' + str(code) + '.csv'
+                filename = 'Data/NTBI_April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
                 dropboxDF.to_csv(filename, index=False)
                 dropboxList = []
                 dropboxDF = pd.DataFrame()  
             browser.back()
+    browser.close()
+    return
 
 ###############################################################################
 # Working Code
@@ -205,47 +208,7 @@ for digit, zips in groupby(sorted(zipList), key=itemgetter(0)):
 
 # Run the DEA scrape function (`scrape_dea`) for every zip code on file
 #   This code spreads the work over all available cores on the computer
-#num_cores = multiprocessing.cpu_count()-1
-#results = Parallel(n_jobs=num_cores)(delayed(scrape_dea)(i) for i in zipBreakDown)
-    
-p = pool(6) as p:
-    p.map(scrape_dea, zipBreakDown)
-
-
-
-
-## Create the final dataframe for storing all dropbox locations
-#dropboxDF = pd.DataFrame(columns = ['Business Name','Address 1','Address 2','City,State,Zip'])
-#
-## Iterate through the contents of each list within Results
-##   Convert the contents to a dataframe, remove duplicates and add the newly 
-##   reduced data to the `dropboxDF` dataframe
-#file_count = 0
-#for result in results:
-#    # Convert the results into pandas dataframe
-#    cNames = ['Business Name','Address 1','Address 2','City,State,Zip','Distance','Map']
-#    tempDF = pd.DataFrame(results[file_count], columns = cNames)
-#
-#    # Delete the `map` and `distance` columns as they are not relevant
-#    tempDF.drop('Map', axis=1, inplace=True)
-#    tempDF.drop('Distance', axis=1, inplace=True)
-#    
-#    # Remove any duplicate entries caused by querying nearby zip codes
-#    tempDF.drop_duplicates(inplace=True)
-#    
-#    # Add the contents of `tempDF` to `dropboxDF`
-#    dropboxDF = dropboxDF.append(tempDF, ignore_index=True)
-#
-#    # Iterate to the next list in `Results`
-#    file_count += 1
-#    
-## Remove any duplicate entries caused by querying nearby zip codes
-#dropboxDF.drop_duplicates(inplace=True)
-#
-## Remove any rows that do not contain values for `Address 1` or `City,State,Zip`
-#dropboxDF = dropboxDF.dropna(axis=0,how='any',subset=['Address 1','City,State,Zip'])
-#
-## Export dataframe to CSV file in the working directory
-#dropboxDF.to_csv('dropbox_addresses_April.csv', index=False) 
-
-
+p = Pool(2)  # Pool tells how many at a time
+p.map(scrape_dea, zipBreakDown)
+p.terminate()
+p.join()
