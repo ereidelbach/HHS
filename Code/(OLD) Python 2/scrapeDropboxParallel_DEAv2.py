@@ -168,7 +168,7 @@ def scrape_dea(zips):
                 dropboxList = dedup_list(dropboxList)
                 print('length of list (AFTER):' + str(len(dropboxList)))
                 
-            if count%400 == 0:
+            if count%200 == 0:
                 print('Printing file: ' + code)
                 # Convert storage container into pandas dataframe
                 dropboxDF = pd.DataFrame(dropboxList, columns = ['Business Name',
@@ -181,11 +181,25 @@ def scrape_dea(zips):
                 dropboxDF.drop_duplicates(inplace=True)
                 
                 # Export dataframe to CSV file in the working directory
-                filename = 'Data/NTBI_April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
+                filename = 'Data/April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
                 dropboxDF.to_csv(filename, index=False)
                 dropboxList = []
                 dropboxDF = pd.DataFrame()  
             browser.back()
+            
+    # Output the final batch of locations
+    dropboxDF = pd.DataFrame(dropboxList, columns = ['Business Name',
+                                                     'Address 1',
+                                                     'Address 2',
+                                                     'City, State Zip',
+                                                     'Map URL'])
+    # Remove any duplicate entries caused by querying nearby zip codes
+    dropboxDF.drop_duplicates(inplace=True)
+    # Export dataframe to CSV file in the working directory
+    filename = 'Data/April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
+    dropboxDF.to_csv(filename, index=False)    
+    
+    # Close the browser
     browser.close()
     return
 

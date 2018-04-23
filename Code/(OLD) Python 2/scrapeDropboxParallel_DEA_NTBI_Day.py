@@ -134,6 +134,7 @@ def scrape_dea(zips):
     
     # final storage container for dropbox locations
     dropboxList = []
+    
     count = 0
     # For every zip code in the US, run the dropbox location search on the site
     for code in zips:
@@ -149,10 +150,15 @@ def scrape_dea(zips):
             # For every column in a row in the dropbox location table, grab the data 
             #   and place it in the list `rowList`.  After each row is read, add that 
             #   data to the master list `dropboxList`.  
-            for tr in status.findAll('tr')[2:-1]:
+            for tr in status.findAll('tr')[1:]:
                 rowList = []
+                if len(tr) < 4: # removes any rows that don't contain proper data
+                    continue
                 for td in tr.findAll('td')[:4]:
-                    rowList.append(td.text.strip())
+                    # Removes special characters from any entries
+                    text = td.text.encode('utf-8').replace('\xd1',"'").replace(
+                            '\xbf',"'").decode('ascii','ignore').strip()
+                    rowList.append(' '.join(text.split()))
                 # Convert state, zip to separate columns
                 stateAndZip = tr.findAll('td')[4]
                 rowList.append(stateAndZip.text.split(', ')[0])
@@ -190,6 +196,22 @@ def scrape_dea(zips):
                 dropboxList = []
                 dropboxDF = pd.DataFrame()  
             browser.back()
+    
+    # Output the final batch of locations
+    dropboxDF = pd.DataFrame(dropboxList, columns = ['Participant',
+                                                     'CollectionSite',
+                                                     'Address',
+                                                     'City',
+                                                     'State',
+                                                     'Zip',
+                                                     'MapURL'])
+    # Remove any duplicate entries caused by querying nearby zip codes
+    dropboxDF.drop_duplicates(inplace=True)
+    # Export dataframe to CSV file in the working directory
+    filename = 'Data/NTBI_April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
+    dropboxDF.to_csv(filename, index=False)    
+    
+    # Close the browser
     browser.close()
     return
 
