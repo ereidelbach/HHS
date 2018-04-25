@@ -339,3 +339,9 @@ merge2DF.drop(['lat_y', 'lng_y', 'address_y', 'postal_y','state_y', '_merge'], a
 merge2DF.rename(columns={'lat_x':'lat','lng_x':'lng','address_x':'address',
                          'postal_x':'postal','state_x':'state'}, inplace=True)
 merge2DF.to_csv('/home/ejreidelbach/projects/HHS/Data/April2018_FINAL.csv', index=False)
+
+# convert the dataframe to a dictionary for export to .json (nicer formatting)
+mergedDict = merge2DF.to_dict('records')
+filename = '/home/ejreidelbach/projects/HHS/Data/April2018_FINAL.json'
+with open(filename, 'wt') as out:
+    json.dump(mergedDict, out, sort_keys=True, indent=4, separators=(',', ': '))

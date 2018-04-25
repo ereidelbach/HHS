@@ -22,10 +22,26 @@ Created on Tue Apr 24 18:46:20 2018
 import json
 import os  
 import pandas as pd  
+from geopy.geocoders import Nominatim
 
 #==============================================================================
 # Function Definitions / Reference Variable Declaration
 #==============================================================================
+def geopy_lat_long(df):
+    geolocator = Nominatim()
+    lat = []
+    lng = []
+    
+    for index, row in df.iterrows():
+        location = geolocator.geocode(row['address'])
+        if location is None:
+            lat.append('')
+            lng.append('')
+        else:
+            lat.append(location.latitude)
+            lng.append(location.longitude)
+        print(str(index))
+    return [lat, lng]
 
 #==============================================================================
 # Working Code
@@ -59,7 +75,7 @@ newDF.drop_duplicates(inplace=True)
 #   back Take-Back America
 
 # Remove the unnamed column (indexes from each file)
-newDF.drop(['Unnamed: 0'], axis=1, inplace=True)
+#newDF.drop(['Unnamed: 0'], axis=1, inplace=True)
 
 # Create the `address` column by combining columns: `Address`, `City`, `State` 
 #   and `Zip`
@@ -86,9 +102,6 @@ newDF['source'] = 'DEA'
 # Insert the column: `source_date` and set every value to `NTBD2018`
 newDF['source_date'] = 'NTBD2018'
 
-# Drop the columns:  `City` and `Participant`
-newDF.drop(['City', 'Participant', 'Address'], axis=1, inplace=True)
-
 # Reset the dataframe index
 newDF.reset_index(drop=True, inplace=True)
 
@@ -111,20 +124,68 @@ newDF['name'] = corrected_list
 #   column `Unnamed: 0`
 newDF.drop_duplicates(inplace=True)
 
-# Output the dataframe to a .csv file
-newDF.to_csv('combined_TakeBack_Format.csv', index=False)
+# Output a version for the census
+newDF.to_csv('etc/census.csv')
 
-#####################################
+# Drop the columns:  `City` and `Participant`
+newDF.drop(['City', 'Participant', 'Address'], axis=1, inplace=True)
+
+# Output the dataframe to a .csv file
+newDF.to_csv('etc/combined_TakeBack_Format.csv', index=False)
+
+###############################################################################
+# After using the geocoding census website:
+#   https://geocoding.geo.census.gov/geocoder/locations/addressbatch?form
+#   Ingest the data, and move the contents to the original data frame
+censusDF = pd.read_csv('/home/ejreidelbach/Downloads/GeocodeResults(1).csv')
+censusDF.drop(['index'], axis=1, inplace=True)
+
+coordinates = censusDF['geocode']
+lat_list = []
+lng_list = []
+for coords in coordinates:
+    if type(coords) is float:
+        lat_list.append('')
+        lng_list.append('')
+    else:
+        lat_list.append(coords.split(',')[1])
+        lng_list.append(coords.split(',')[0])
+        
+newDF['lat'] = lat_list
+newDF['lng'] = lng_list
+newDF[['lat','lng']] = newDF[['lat','lng']].apply(pd.to_numeric)
+
+# Backup the data by exporting the results
+newDF.to_csv('etc/combined_TakeBack_Format_with_geos.csv', index = False)
+
+###############################################################################
+
+# Try using a python library to help us out by geocoding addresses
+coordinates = geopy_lat_long(newDF)
+newDF['lat'] = coordinates[0]
+newDF['lng'] = coordinates[1]
+newDF[['lat','lng']] = newDF[['lat','lng']].apply(pd.to_numeric)
+
+###############################################################################
+
+# Extract out the rows missing lat/long values from the original dataframe
+needGeoDF = newDF[newDF.isnull().any(axis=1)]
+
+
+###############################################################################
 
 # Ingest the new data from National TakeBack Day
-newDF = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/NTBI_April2018/combined_TakeBack_Format.csv')
+newDF2 = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/NTBI_April2018/combined_TakeBack_Format.csv')
 
 # Ingest the current merged data from April 2018
-currentDF = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/April2018.csv')
+currentDF = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/April2018_FINAL.csv')
 
 # Find which locations are new between the `current` markers and the `new` markers
-mergedDF = pd.merge(currentDF, newDF, how='outer', on=['address'], indicator=True)
+mergedDF = pd.merge(currentDF, newDF, how='outer', on=['address','googleMapsUrl',
+                                                       'name','postal','source','state','source_date'], indicator=True)
 mergedDF.drop_duplicates(inplace=True)
 
 # Output the merged file to a .csv
 mergedDF.to_csv('/home/ejreidelbach/projects/HHS/Data/April_NTBI_2018.csv', index=False)
+
+#####################################
