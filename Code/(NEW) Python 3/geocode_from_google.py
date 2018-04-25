@@ -21,6 +21,7 @@ Created on Wed Apr 25 14:46:27 2018
 #==============================================================================
 import os  
 import pandas as pd
+import googlemaps
 import requests
 import logging
 import time
@@ -99,7 +100,7 @@ def get_google_results(address, api_key=None, return_full_response=False):
 API_KEY = 'AIzaSyBKVoIWv01QsbMr2pHLT0q6Z56oUYc37rE'
 
 # Backoff time sets how many minutes to wait between google pings when your API limit is hit
-BACKOFF_TIME = 30
+BACKOFF_TIME = 2
 
 # Set the project working directory
 os.chdir(r'/home/ejreidelbach/projects/HHS/Data/NTBI_April2018/')
@@ -128,11 +129,6 @@ if address_column_name not in data.columns:
 # Make a big list of all of the addresses to be processed.
 addresses = data[address_column_name].tolist()
 
-# **** DEMO DATA / IRELAND SPECIFIC! ****
-# We know that these addresses are in Ireland, and there's a column for county, so add this for accuracy. 
-# (remove this line / alter for your own dataset)
-addresses = (data[address_column_name] + ',' + data['County'] + ',Ireland').tolist()
-
 #==============================================================================
 # Working Code
 #==============================================================================
@@ -145,7 +141,7 @@ if (test_result['status'] != 'OK') or (test_result['formatted_address'] != 'Lond
 # Create a list to hold results
 results = []
 # Go through each address in turn
-for address in addresses:
+for address in addresses[312:]:
     # While the address geocoding is not finished:
     geocoded = False
     while geocoded is not True:
@@ -161,7 +157,7 @@ for address in addresses:
         # If we're over the API limit, backoff for a while and try again later.
         if geocode_result['status'] == 'OVER_QUERY_LIMIT':
             logger.info("Hit Query Limit! Backing off for a bit.")
-            time.sleep(BACKOFF_TIME * 60) # sleep for 30 minutes
+            time.sleep(BACKOFF_TIME * 60) # sleep for 2 minutes
             geocoded = False
         else:
             # If we're ok with API use, save the results
@@ -172,12 +168,12 @@ for address in addresses:
             results.append(geocode_result)           
             geocoded = True
 
-    # Print status every 100 addresses
-    if len(results) % 100 == 0:
+    # Print status every 50 addresses
+    if len(results) % 50 == 0:
     	logger.info("Completed {} of {} address".format(len(results), len(addresses)))
             
-    # Every 500 addresses, save progress to file(in case of a failure so you have something!)
-    if len(results) % 500 == 0:
+    # Every 100 addresses, save progress to file(in case of a failure so you have something!)
+    if len(results) % 100 == 0:
         pd.DataFrame(results).to_csv("{}_bak".format(output_filename))
 
 # All done

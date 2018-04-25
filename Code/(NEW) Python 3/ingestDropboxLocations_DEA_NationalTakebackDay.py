@@ -172,11 +172,35 @@ newDF[['lat','lng']] = newDF[['lat','lng']].apply(pd.to_numeric)
 needGeoDF = newDF[newDF.isnull().any(axis=1)]
 needGeoDF.to_csv('etc/need_geos.csv')
 
-
 ###############################################################################
 
-# Ingest the new data from National TakeBack Day
-newDF2 = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/NTBI_April2018/combined_TakeBack_Format.csv')
+# Ingest the original DF for all National TakeBack Day Sites
+takeBackDF = pd.read_csv('etc/combined_TakeBack_Format_with_geos.csv')
+takeBackDF.set_index('index', inplace=True)
+
+# Ingest the data with newly obtained geo codes
+compGeoDF = pd.read_csv('etc/completed_geocodes.csv')
+compGeoDF.set_index('Unnamed: 0', inplace=True)
+
+# Merge the datasets to bring in the new lat long values
+#mergedDF = pd.merge(takeBackDF, compGeoDF, how='outer', left_on=index, right_on=index, indicator=True)
+mergedDF = takeBackDF.merge(compGeoDF, how='left', on=['address'])
+mergedDF.drop_duplicates(inplace=True)
+
+# swap new lat/long values into old ones for all addresses that were missing values
+mergedDF.lat_x.fillna(mergedDF.lat_y, inplace=True)
+mergedDF.lng_x.fillna(mergedDF.lng_y, inplace=True)
+mergedDF.drop(['lat_y', 'lng_y', 'name_y', 'state_y',
+               'postal_y','googleMapsUrl_y', 'source_y',
+               'source_date_y'], axis=1, inplace=True)
+mergedDF.rename(columns={'lat_x':'lat','lng_x':'lng',
+                         'name_x':'name','state_x':'state',
+                         'postal_x':'postal','googleMapsUrl_x':'googleMapsUrl',
+                         'source_date_x':'source_date','source_x':'source'}, inplace=True)
+
+mergedDF.to_csv('etc/merged.csv')
+
+###############################################################################
 
 # Ingest the current merged data from April 2018
 currentDF = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/April2018_FINAL.csv')
@@ -190,3 +214,13 @@ mergedDF.drop_duplicates(inplace=True)
 mergedDF.to_csv('/home/ejreidelbach/projects/HHS/Data/April_NTBI_2018.csv', index=False)
 
 #####################################
+
+finalDF = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/April2018_and_NTBI2018.csv')
+exportDF = finalDF[finalDF['source_date'] != 'April2018']
+
+exportDF.to_csv('/home/ejreidelbach/projects/HHS/Data/HHS_Demo_Dec2017_and_TakeBackDay.csv', index=False)
+# convert the dataframe to a dictionary for export to .json (nicer formatting)
+exportDict = exportDF.to_dict('records')
+filename = '/home/ejreidelbach/projects/HHS/Data/HS_Demo_Dec2017_and_TakeBackDay.json'
+with open(filename, 'wt') as out:
+    json.dump(exportDict, out, sort_keys=True, indent=4, separators=(',', ': '))
