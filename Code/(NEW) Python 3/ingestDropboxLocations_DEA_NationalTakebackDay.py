@@ -63,25 +63,16 @@ newDF.drop(['Unnamed: 0'], axis=1, inplace=True)
 
 # Create the `address` column by combining columns: `Address`, `City`, `State` 
 #   and `Zip`
-newDF['Address 2'].fillna('', inplace=True)
-temp = newDF['Address 1'] + ', ' + newDF['Address 2'] + ', ' + newDF['City, State Zip']
-split_list = [x.replace(' ,',',') for x in temp]
-split_list = [x.split() for x in split_list]
-corrected_list = []
-for address in split_list:
-    corrected_address = ''
-    count = 0
-    while count < len(address)-2:
-        if count == 0:
-            corrected_address = address[count].upper()
-        else:
-            corrected_address = corrected_address + ' ' + address[count].upper()
-        count+=1
-    corrected_address = corrected_address + ', ' + address[count].strip(',') + ' ' + address[count+1]
-    corrected_address = corrected_address.replace(',,',',')
-    corrected_list.append(corrected_address)
-newDF['address'] = corrected_list
-split_list = []
+zips = newDF['Zip'].astype(str).str.zfill(5)
+#new_zips = []
+#for zip in zips:
+#    zip = zip.replace('.0','')
+#    if len(zip) == 4:
+#        zip = '0'+zip
+#    new_zips.append(zip)
+#new_zips_series = pd.Series(new_zips)
+temp = list(newDF['Address'] + ', ' + newDF['City'] + ', ' + newDF['State'] + ' ' + zips)
+newDF['address'] = temp
 
 # Rename the `State` column to `state`, `Zip` to `postal`, `CollectionSite` to
 #   `name`, and `MapURL` to `googleMapsUrl`
@@ -96,10 +87,44 @@ newDF['source'] = 'DEA'
 newDF['source_date'] = 'NTBD2018'
 
 # Drop the columns:  `City` and `Participant`
-newDF.drop(['City', 'Participant'], axis=1, inplace=True)
+newDF.drop(['City', 'Participant', 'Address'], axis=1, inplace=True)
 
 # Reset the dataframe index
-newDF.reset_index(drop=True)
+newDF.reset_index(drop=True, inplace=True)
+
+# Remove anymore duplicates that may not have been removed earlier due to the
+#   column `Unnamed: 0`
+newDF.drop_duplicates(inplace=True)
+
+# Fix issues with the formatting of the `name` column
+name_fix = newDF['name']
+split_list = [x.split() for x in name_fix]
+corrected_list = []
+for address in split_list:
+    corrected_address = address[0]
+    for element in address[1:]:
+        corrected_address = corrected_address + ' ' + element
+    corrected_list.append(corrected_address)
+newDF['name'] = corrected_list
+    
+# Remove anymore duplicates that may not have been removed earlier due to the
+#   column `Unnamed: 0`
+newDF.drop_duplicates(inplace=True)
 
 # Output the dataframe to a .csv file
 newDF.to_csv('combined_TakeBack_Format.csv', index=False)
+
+#####################################
+
+# Ingest the new data from National TakeBack Day
+newDF = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/NTBI_April2018/combined_TakeBack_Format.csv')
+
+# Ingest the current merged data from April 2018
+currentDF = pd.read_csv('/home/ejreidelbach/projects/HHS/Data/April2018.csv')
+
+# Find which locations are new between the `current` markers and the `new` markers
+mergedDF = pd.merge(currentDF, newDF, how='outer', on=['address'], indicator=True)
+mergedDF.drop_duplicates(inplace=True)
+
+# Output the merged file to a .csv
+mergedDF.to_csv('/home/ejreidelbach/projects/HHS/Data/April_NTBI_2018.csv', index=False)
