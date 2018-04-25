@@ -96,7 +96,7 @@ def get_google_results(address, api_key=None, return_full_response=False):
 #==============================================================================
 # Set your Google API key here. 
 # Example: API_KEY = 'AIzaSyC9azed9tLdjpZNjg2_kVePWvMIBq154eA'
-API_KEY = None
+API_KEY = 'AIzaSyBKVoIWv01QsbMr2pHLT0q6Z56oUYc37rE'
 
 # Backoff time sets how many minutes to wait between google pings when your API limit is hit
 BACKOFF_TIME = 30

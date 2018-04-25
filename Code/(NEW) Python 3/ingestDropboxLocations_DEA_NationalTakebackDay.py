@@ -170,6 +170,7 @@ newDF[['lat','lng']] = newDF[['lat','lng']].apply(pd.to_numeric)
 
 # Extract out the rows missing lat/long values from the original dataframe
 needGeoDF = newDF[newDF.isnull().any(axis=1)]
+needGeoDF.to_csv('etc/need_geos.csv')
 
 
 ###############################################################################
