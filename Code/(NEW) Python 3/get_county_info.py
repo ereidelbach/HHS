@@ -50,6 +50,11 @@ for index, row in df.iterrows():
     print('County Name for ' + str(index) + ': ' + str(county_name))
     time.sleep(1)
 
+# Create a column county in the dataframe `df`
+df['county'] = county_list
+
+# Export the dataframe
+df.to_csv('April2018_with_counties.csv', index=False)
 
 #df.drop(['name', 'source', 'source_date', 'lat', 'lng', 'googleMapsUrl'], axis=1, inplace=True)
 #
