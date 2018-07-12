@@ -23,7 +23,7 @@ from operator import itemgetter
             https://github.com/mozilla/geckodriver/releases
                 
             Once that is complete, extract the driver and place it in the
-            /us/local/bin folder
+            /usr/local/bin folder
            
     NOTE 2: An effective selenium guide can be found here:
             https://automatetheboringstuff.com/chapter11/
