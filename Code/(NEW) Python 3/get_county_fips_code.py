@@ -95,10 +95,17 @@ df_final.drop(['county_lower'
                ,'Area_Name'
                ,'Area_Name_lower'], axis=1, inplace=True)
 
+# add a leading 0 to zip codes (i.e. postal) that are only 4 digits
+df_final['postal'] = df_final['postal'].apply(lambda x: '{0:0>5}'.format(x))
+    
 # Export the dataframe
-df_final.to_csv('April2018_with_counties_and_fips.csv', index=False)
+df_final.to_excel('April2018_with_counties_and_fips.xlsx', index=False)
 
+# get counts of dropbox locations by state
+df_counts_state = df_final.groupby(['state']).size().reset_index(name='counts')
+df_counts_state.to_excel('April2018_location_counts_by_state.xlsx', index=False)
 
-
-
+# get counts of dropbox locations by fips code
+df_counts_fips = df_final.groupby(['fips']).size().reset_index(name='counts')
+df_counts_fips.to_excel('April2018_location_counts_by_fips.xlsx', index=False)
 
