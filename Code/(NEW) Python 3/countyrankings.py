@@ -137,7 +137,7 @@ for row in nationDF.iterrows():
 nation_dict[state_fips] = state_dict
 
 # Output dictionary to file
-output_fname = 'sanitzedCountiesWithRankings.json'
+output_fname = 'sanitizedCountiesWithRankings.json'
 with open(output_fname, 'wt') as out:
     json.dump(nation_dict, out, sort_keys=True)
 #    json.dump(nation_dict, out, sort_keys=True, indent=4, separators=(',', ': '))

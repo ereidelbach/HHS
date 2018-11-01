@@ -2,10 +2,12 @@
 *.log
 
 # Ignore folder named `Data`
-#/Data
+Data/April2018
+Data/Archive
+Data/NTBI_April2018
 
 # Ignore folder named `TAGGS`
-/TAGGS
+TAGGS/
 
 # Ignore folder named `Images`
-/Images
+Images/

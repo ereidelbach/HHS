@@ -168,8 +168,9 @@ for code in zipList:
             dropboxDF.drop_duplicates(inplace=True)
             
             # Export dataframe to CSV file in the working directory
-            filename = 'Data/April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
+            filename = 'Data/October2018/DEA_addresses_October2018_' + str(code) + '.csv'
             dropboxDF.to_csv(filename, index=False)
             dropboxList = []
             dropboxDF = pd.DataFrame()  
         browser.back()
+browser.close()

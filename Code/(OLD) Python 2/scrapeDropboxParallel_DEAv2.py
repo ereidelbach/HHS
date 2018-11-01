@@ -139,53 +139,56 @@ def scrape_dea(zips):
     
     count = 0
     # For every zip code in the US, run the dropbox location search on the site
-    for code in zips:
-        status = ''
-        status = scrape_page(browser)
-        
-        # If we find a bad zip code or no dropbox locations are found in a zip,
-        #   skip to the next zip code
-        if status == 'NONE_FOUND' or status == 'BAD_ZIP':
-            browser.get('https://apps.deadiversion.usdoj.gov/pubdispsearch')
-            continue
-        else:
-            # For every column in a row in the dropbox location table, grab the data 
-            #   and place it in the list `rowList`.  After each row is read, add that 
-            #   data to the master list `dropboxList`.  
-            for tr in status.findAll('tr')[1:]:
-                rowList = []
-                for td in tr.findAll('td')[:4]:
-                    rowList.append(td.text)
-                mapInfo = tr.find('a', href=True)['href'].split(
-                        'daddr=')[1].split('&hl=en')[0]
-                mapURL = 'http://maps.google.com/maps?q=' + str(mapInfo)
-                rowList.append(mapURL)
-                dropboxList.append(rowList) 
-            count+=1
-            if count%25 == 0:
-                print(count)
-                print('length of list (BEFORE):' + str(len(dropboxList)))
-                dropboxList = dedup_list(dropboxList)
-                print('length of list (AFTER):' + str(len(dropboxList)))
-                
-            if count%200 == 0:
-                print('Printing file: ' + code)
-                # Convert storage container into pandas dataframe
-                dropboxDF = pd.DataFrame(dropboxList, columns = ['Business Name',
-                                                                 'Address 1',
-                                                                 'Address 2',
-                                                                 'City, State Zip',
-                                                                 'Map URL'])
-                
-                # Remove any duplicate entries caused by querying nearby zip codes
-                dropboxDF.drop_duplicates(inplace=True)
-                
-                # Export dataframe to CSV file in the working directory
-                filename = 'Data/April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
-                dropboxDF.to_csv(filename, index=False)
-                dropboxList = []
-                dropboxDF = pd.DataFrame()  
-            browser.back()
+    try:
+        for code in zips:
+            status = ''
+            status = scrape_page(browser)
+            
+            # If we find a bad zip code or no dropbox locations are found in a zip,
+            #   skip to the next zip code
+            if status == 'NONE_FOUND' or status == 'BAD_ZIP':
+                browser.get('https://apps.deadiversion.usdoj.gov/pubdispsearch')
+                continue
+            else:
+                # For every column in a row in the dropbox location table, grab the data 
+                #   and place it in the list `rowList`.  After each row is read, add that 
+                #   data to the master list `dropboxList`.  
+                for tr in status.findAll('tr')[1:]:
+                    rowList = []
+                    for td in tr.findAll('td')[:4]:
+                        rowList.append(td.text)
+                    mapInfo = tr.find('a', href=True)['href'].split(
+                            'daddr=')[1].split('&hl=en')[0]
+                    mapURL = 'http://maps.google.com/maps?q=' + str(mapInfo)
+                    rowList.append(mapURL)
+                    dropboxList.append(rowList) 
+                count+=1
+                if count%25 == 0:
+                    print(count)
+                    print('length of list (BEFORE):' + str(len(dropboxList)))
+                    dropboxList = dedup_list(dropboxList)
+                    print('length of list (AFTER):' + str(len(dropboxList)))
+                    
+                if count%200 == 0:
+                    print('Printing file: ' + code)
+                    # Convert storage container into pandas dataframe
+                    dropboxDF = pd.DataFrame(dropboxList, columns = ['Business Name',
+                                                                     'Address 1',
+                                                                     'Address 2',
+                                                                     'City, State Zip',
+                                                                     'Map URL'])
+                    
+                    # Remove any duplicate entries caused by querying nearby zip codes
+                    dropboxDF.drop_duplicates(inplace=True)
+                    
+                    # Export dataframe to CSV file in the working directory
+                    filename = 'Data/October2018/DEA_addresses_October2018_' + str(code) + '.csv'
+                    dropboxDF.to_csv(filename, index=False)
+                    dropboxList = []
+                    dropboxDF = pd.DataFrame()  
+                browser.back()
+    except:
+        print('Code: ' + code)
             
     # Output the final batch of locations
     dropboxDF = pd.DataFrame(dropboxList, columns = ['Business Name',
@@ -196,7 +199,7 @@ def scrape_dea(zips):
     # Remove any duplicate entries caused by querying nearby zip codes
     dropboxDF.drop_duplicates(inplace=True)
     # Export dataframe to CSV file in the working directory
-    filename = 'Data/April2018/dropbox_addresses_April2018_' + str(code) + '.csv'
+    filename = 'Data/October2018/DEA_addresses_October2018_' + str(code) + '.csv'
     dropboxDF.to_csv(filename, index=False)    
     
     # Close the browser

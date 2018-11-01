@@ -39,14 +39,14 @@ def multiple_replace(text, adict):
 os.chdir(r'/home/ejreidelbach/projects/HHS/Data/')
 
 # Read in locations DF
-df = pd.read_csv('April2018_locations_with_counties.csv')
+df = pd.read_csv('map_markers_October2018.csv')
 
 ###############################################################################
 # create a DF with FIPS codes for every county
 
 # import codes for every state
 df_state_fips = pd.read_excel('state_fips_codes.xlsx', converters={'State_Code':str})
-# import codes for eveyr county
+# import codes for every county
 df_fips = pd.read_excel('all-geocodes-v2016.xlsx', converters={'State_Code':str,'County_Code':str})
 # combine these two datasets
 df_counties = pd.merge(df_fips, df_state_fips, how='left', on='State_Code')
@@ -93,7 +93,7 @@ df_final = pd.merge(df, df_counties, how='left',
 # Drop unnecessary columns
 df_final.drop(['county_lower'
                ,'Area_Name'
-               ,'Area_Name_lower'], axis=1, inplace=True)
+               ,'Area_Name_lower', 'Unnamed: 0'], axis=1, inplace=True)
 
 # add a leading 0 to zip codes (i.e. postal) that are only 4 digits
 df_final['postal'] = df_final['postal'].apply(lambda x: '{0:0>5}'.format(x))
